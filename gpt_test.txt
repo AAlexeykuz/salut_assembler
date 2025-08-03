@@ -1,0 +1,202 @@
+; print_number_screen.asm
+; ---------------------
+; Generic routine to print an unsigned integer in decimal
+; onto a 32×32 pixel display (mapped to port 0).
+; Characters are 5×3 pixels, spaced in 6×4 cells.
+
+; ------------------------------------------------------------------
+; Port and memory definitions
+; ------------------------------------------------------------------
+.EQU SCREEN_PORT, 0          ; output port for pixel drawing
+
+; Buffer for up to 6 digits (max 6 decimal digits for 16‑bit value)
+DIGIT_BUFFER:
+    DATA 0
+    DATA 0
+    DATA 0
+    DATA 0
+    DATA 0
+    DATA 0
+
+; Digit bitmaps: 10 digits × 3 rows of 5 bits each (MSB = leftmost pixel)
+; Stored as 0bxxxxx per row: bit4..bit0
+DIGIT_PATTERNS:
+    ; 0
+    DATA 0x1F  ; 11111
+    DATA 0x11  ; 10001
+    DATA 0x1F  ; 11111
+    ; 1
+    DATA 0x04  ; 00100
+    DATA 0x04  ; 00100
+    DATA 0x04  ; 00100
+    ; 2
+    DATA 0x1D  ; 11101
+    DATA 0x15  ; 10101
+    DATA 0x17  ; 10111
+    ; 3
+    DATA 0x1D
+    DATA 0x15
+    DATA 0x1D
+    ; 4
+    DATA 0x13
+    DATA 0x13
+    DATA 0x1F
+    ; 5
+    DATA 0x17
+    DATA 0x15
+    DATA 0x1D
+    ; 6
+    DATA 0x1F
+    DATA 0x15
+    DATA 0x1D
+    ; 7
+    DATA 0x1D
+    DATA 0x04
+    DATA 0x04
+    ; 8
+    DATA 0x1F
+    DATA 0x15
+    DATA 0x1F
+    ; 9
+    DATA 0x1F
+    DATA 0x15
+    DATA 0x1F
+
+; ------------------------------------------------------------------
+; Subroutine: printNumber
+; Inputs:
+;   Reg A = X start (0..31)
+;   Reg B = Y start (0..31)
+;   Reg F = value to print (0..65535)
+; Clobbers: C, D, E, G, IA, PS
+; Uses: STACK only indirectly via buffer
+; ------------------------------------------------------------------
+printNumber:
+    ;--- 1) Decompose into decimal digits, store remainders in buffer ---
+    MOV G, (10)            ; G = divisor 10
+    MOV D, (0)             ; D = digit count = 0
+.decompose:
+    CMP F, (0)             ; if F == 0, done
+    JE .digits_ready
+    DIV D, E, F, G         ; D_quotient = F/10, E_rem = F%10
+    MOV F, D               ; F = quotient for next iteration
+    ; write remainder E into DIGIT_BUFFER[D]
+    MOV IA, DIGIT_BUFFER   ; IA = base address of buffer
+    MOV C, E               ; C = remainder value
+    STR [IA+D], C          ; buffer[D] = remainder
+    INC D, D               ; D++
+    JMP .decompose
+
+.digits_ready:
+    CMP D, (0)
+    JNE .have_digits
+    ; if original value was 0, force one digit '0'
+    MOV D, (1)
+    MOV [DIGIT_BUFFER], (0)
+.have_digits:
+
+    ;--- 2) Draw digits from most significant down to least ---
+    ; current D = count of digits
+    ; we'll loop i = D-1 down to 0
+    MOV C, D               ; C = digit count
+    DEC C, C               ; C-- → index of most significant digit
+.loop_draw:
+    CMP C, (0)
+    JZ .draw_last
+    ; Fetch digit = DIGIT_BUFFER[C]
+    MOV IA, DIGIT_BUFFER
+    LDR E, [IA+C]          ; E = digit to draw
+    ; compute character X offset = A + C*6
+    MOV G, (6)
+    MOV F, C
+    MUL F, F, G            ; F = C*6
+    ADD IA, A, F           ; IA = base X for this digit
+    MOV A, IA              ; A = current X
+    ; B remains Y start
+    MOV C, E               ; C = digit value for drawDigit
+    CALL drawDigit
+    DEC C, C               ; C--
+    JMP .loop_draw
+.draw_last:
+    ; draw index 0
+    MOV IA, DIGIT_BUFFER
+    LDR E, [IA]            ; E = last digit
+    MOV C, E
+    CALL drawDigit
+    RET
+
+; ------------------------------------------------------------------
+; Subroutine: drawDigit
+; Inputs:
+;   Reg A = X origin for this character
+;   Reg B = Y origin for this character
+;   Reg C = digit (0..9)
+; Uses: D, E, G, IA, PS
+; ------------------------------------------------------------------
+drawDigit:
+    ; IA = address of bitmap for digit C: DIGIT_PATTERNS + C*3
+    MOV IA, DIGIT_PATTERNS
+    MOV G, (3)
+    MUL G, C, G            ; G = C*3
+    ADD IA, IA, G          ; IA = &PATTERNS[C*3]
+
+    ; Row loop (0..2)
+    MOV D, (0)             ; D = row index
+.row_loop:
+    CMP D, (3)
+    JE .done_rows
+    ; load mask = DIGIT_PATTERNS[C*3 + D]
+    LDR E, [IA+D]          ; E = 5‑bit mask for this row
+    ; Pixel columns unrolled: mask bits 4→0
+    ; Row Y = B + D
+    ADD PS, B, D           ; PS temporarily = y coordinate
+    MOV G, (16)            ; initial mask = 1<<4
+
+    ; Column 0
+    AND F, E, (16)
+    CMP F, (0)
+    JE .sk0
+    ; draw pixel at (A+0, PS)
+    MOV D, A
+    OUT SCREEN_PORT, (D + PS*32 + 1024)  ; encode x,y,ON bit
+.sk0:
+    ; Column 1: mask=8
+    AND F, E, (8)
+    CMP F, (0)
+    JE .sk1
+    OUT SCREEN_PORT, (A+1 + PS*32 + 1024)
+.sk1:
+    ; Column 2: mask=4
+    AND F, E, (4)
+    CMP F, (0)
+    JE .sk2
+    OUT SCREEN_PORT, (A+2 + PS*32 + 1024)
+.sk2:
+    ; Column 3: mask=2
+    AND F, E, (2)
+    CMP F, (0)
+    JE .sk3
+    OUT SCREEN_PORT, (A+3 + PS*32 + 1024)
+.sk3:
+    ; Column 4: mask=1
+    AND F, E, (1)
+    CMP F, (0)
+    JE .sk4
+    OUT SCREEN_PORT, (A+4 + PS*32 + 1024)
+.sk4:
+
+    INC D, D               ; D++
+    JMP .row_loop
+.done_rows:
+    RET
+
+; ------------------------------------------------------------------
+; Example usage:
+; Set A=2, B=2, C=12345, then CALL printNumber
+; ------------------------------------------------------------------
+START:
+    MOV A, 2
+    MOV B, 2
+    MOV C, 12345
+    CALL printNumber
+    STOP
