@@ -178,9 +178,9 @@ class Instruction:
     def get_machine_code(self, operands: list[str]) -> list[int | str]:
         if self._opcode is None:
             raise AssemblerError("Unexpected assembler exception.")
+        operands = self._normalize_operands(operands)
         if not operands:
             return [self._opcode]
-        operands = self._normalize_operands(operands)
         has_immediate = self._is_immediate(operands[-1])
         if has_immediate and (len(operands) == 4 or "REM" in self.names):
             return [self._opcode, self._get_operand_sum(operands)]
