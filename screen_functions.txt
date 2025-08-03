@@ -1,0 +1,12 @@
+jmp screen_functions_end
+clear_screen:
+    push r0
+    stop
+    .cycle_start:
+        out p0, r0
+        inc r0, r0
+        cmp r0, 1024
+        jl .cycle_start
+    pop r0
+    ret
+screen_functions_end:

@@ -33,6 +33,7 @@ RESERVED_NAMES = (
 
 
 def immediate_to_int(imm: str) -> int:
+    imm = imm.replace("_", "")
     if imm.startswith("0X"):
         value = int(imm[2:], 16)
     elif imm.startswith("0B"):

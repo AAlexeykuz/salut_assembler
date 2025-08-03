@@ -1,0 +1,3 @@
+.include screen_functions.txt
+call clear_screen
+stop

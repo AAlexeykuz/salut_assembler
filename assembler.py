@@ -318,6 +318,8 @@ class Assembler:
                     raise NameError(
                         f"Local label '{k2}' of global label '{k1}' is already defined and cannot be included from another file."
                     )
+                if k1 not in self._local_labels:
+                    self._local_labels[k1] = {}
                 self._local_labels[k1][k2] = v2
                 self._included_names.append((k1, k2))
 
