@@ -39,13 +39,13 @@ Signal bits are marked white on the build.
 
 4. Special Registers
 
-1. PC - Program counter. It's where CPU reads instructions from.
+   1. PC - Program counter. It's where CPU reads instructions from.
 
-1. SP - Stack pointer. It shows the top of the stack.
+   2. SP - Stack pointer. It shows the top of the stack.
 
-1. IM - Input mask. It contains 4 bits that control from which ports input handling can be triggered.
+   3. IM - Input mask. It contains 4 bits that control from which ports input handling can be triggered.
 
-1. IA - Input address. It tells where input handling function is in the memory.
+   4. IA - Input address. It tells where input handling function is in the memory.
 
 When input signal bits turn on, if the port in which they're turned on is set in IM it clears signal bits from every port and executes CALL IA instruction, interrupting others.
 
