@@ -174,10 +174,11 @@ class Assembler:
     def _get_current_global_label(self, address: Optional[int] = None) -> str | None:
         if address is None:
             address = self._word_count
-        if not self._global_labels:
+        global_labels = [(k, v) for k, v in self._global_labels.items() if v <= address]
+        if not global_labels:
             return None
         return max(
-            [(k, v) for k, v in self._global_labels.items() if v <= address],
+            global_labels,
             key=lambda x: x[1],
         )[0]
 
