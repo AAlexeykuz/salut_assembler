@@ -174,6 +174,7 @@ class Assembler:
     def _get_current_global_label(self, address: Optional[int] = None) -> str | None:
         if address is None:
             address = self._word_count
+        address += self._address_shift
         global_labels = [(k, v) for k, v in self._global_labels.items() if v <= address]
         if not global_labels:
             return None

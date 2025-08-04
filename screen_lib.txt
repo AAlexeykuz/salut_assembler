@@ -1,0 +1,87 @@
+
+
+
+clear_screen:
+    PUSH r0
+    MOV r0, 1023
+    .cycle_start:
+        OUT p0, r0
+        DEC r0, r0
+        JNS .cycle_start
+    POP r0
+    RET
+
+; функция рисования прямоугольнкиа без заливки
+; r1, r2 - (x, y) левого нижнего края для 32х32 монитора 0 <= x < 32, 0 <= y < 32
+; r3, r4 - (W, L) ширина и длина. 0 < W < 32, 0 < L < 32
+draw_border:
+    PUSH r5  ; bottom horizontal pointer
+    SHL r5, r2, 5
+    ADD r5, r5, 1024
+    ADD r5, r5, r1
+    
+    PUSH r6 ; upper horizontal pointer
+    SHL r6, r4, 5
+    ADD r6, r6, r5
+    SUB r6, r6, 32
+
+    PUSH r3
+    .horizontal_draw:
+        OUT p0, r5
+        OUT p0, r6
+        INC r5, r5
+        INC r6, r6
+        DEC r3, r3
+        JNZ .horizontal_draw
+    POP r3
+
+    ; r5 = left vertical pointer
+    SHL r5, r1, 5
+    ADD r5, r5, 1025
+    ADD r5, r5, r2
+
+    ; r6 = right vertical pointer
+    SHL r6, r3, 5
+    ADD r6, r6, r5
+    SUB r6, r6, 32
+
+    PUSH r4
+    SUB r4, r4, 2
+    JLE .end_vertical_draw
+    .vertical_draw:
+        OUT p1, r5
+        OUT p1, r6
+        INC r5, r5
+        INC r6, r6
+        DEC r4, r4
+        JNZ .vertical_draw
+    .end_vertical_draw:
+    POP r4
+
+    POP r6
+    POP r5
+    RET
+
+
+; функция включения пикселя
+; r1 - х
+; r2 - y
+pixel_on:
+    PUSH R2
+    SHL r2, r2, 5
+    ADD r2, r2, r1
+    ADD r2, r2, 1024
+    OUT P0, R2
+    POP R2
+    RET
+
+; функция выключения пикселя
+; r1 - X
+; r2 - Y
+pixel_off:
+    PUSH R2
+    SHL r2, r2, 5
+    ADD r2, r2, r1
+    OUT P0, R2
+    POP R2
+    RET

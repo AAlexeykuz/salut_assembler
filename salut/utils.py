@@ -43,8 +43,8 @@ def immediate_to_int(imm: str) -> int:
 
 
 class Instruction:
-    register_bits = 4
-    flag_bits = port_bits = 2
+    _register_bits = 4
+    _flag_bits = _port_bits = 2
 
     def __init__(
         self,
@@ -145,13 +145,13 @@ class Instruction:
             operand.strip("[]") for operand in operands if self._is_squared(operand)
         ]
         operands = squared_operands + [
-            operand for operand in operands if operands not in squared_operands
+            operand for operand in operands if operand not in squared_operands
         ]
         flag_and_port_oprands = [
             operand for operand in operands if operand in (FLAG_NUMBER_NAMES + PORT_NAMES)
         ]
         operands = flag_and_port_oprands + [
-            operand for operand in operands if operands not in flag_and_port_oprands
+            operand for operand in operands if operand not in flag_and_port_oprands
         ]
 
         self._place_immediate_last(operands)
@@ -159,17 +159,27 @@ class Instruction:
         return operands
 
     @staticmethod
+    def _get_bits(operand: str) -> int:
+        if operand in PORT_NAMES:
+            return Instruction._port_bits
+        if operand in FLAG_NUMBER_NAMES:
+            return Instruction._flag_bits
+        if operand in REGISTER_NAMES:
+            return Instruction._register_bits
+        raise AssemblerError("Unexpected assembler error: operands were normalized wrong")
+
+    @staticmethod
     def _get_operand_sum(operands: list[str]) -> int:
         ports = [operand for operand in operands if operand in PORT_NAMES]
         flags = [operand for operand in operands if operand in FLAG_NUMBER_NAMES]
         registers = [operand for operand in operands if operand in REGISTER_NAMES]
-        return (
-            sum(int(p[1:]) << (i * Instruction.port_bits) for i, p in enumerate(ports))
-            + sum(int(f[1:]) << (i * Instruction.port_bits) for i, f in enumerate(flags))
-            + sum(
-                int(r[1:]) << (i * Instruction.port_bits) for i, r in enumerate(registers)
-            )
-        )
+        operands = ports + flags + registers[::-1]
+        sum_ = 0
+        for i in operands:
+            sum_ <<= Instruction._get_bits(i)
+            sum_ += int(i[1:])
+        # print(operands, format(sum_, "016b"))
+        return sum_
 
     def get_machine_code(self, operands: list[str]) -> list[int | str]:
         if self._opcode is None:
