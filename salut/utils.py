@@ -2,11 +2,6 @@ from typing import Literal, Optional
 
 from salut.errors import AssemblerError
 
-MEMORY_BLOCK_DATA_PATH = (
-    "c:\\Program Files (x86)\\Steam\\steamapps\\"
-    "workshop\\content\\387990\\3100500975\\"
-    "memoryBlockData\\data.json"
-)
 # регистры
 REGISTER_NAMES = R = [f"R{i}" for i in range(16)]
 SQUARED_R = [f"[{r}]" for r in REGISTER_NAMES]
@@ -197,8 +192,8 @@ INSTRUCTIONS: list[Instruction] = [
     Instruction("CALL", 3, [IMM]),
     Instruction("JS", 4, [IMM]),
     Instruction("JNS", 5, [IMM]),
-    Instruction("JE", 6, [IMM]),
-    Instruction("JNE", 7, [IMM]),
+    Instruction(["JE", "JZ"], 6, [IMM]),
+    Instruction(["JNE", "JNZ"], 7, [IMM]),
     Instruction(["JC", "JAE"], 8, [IMM]),
     Instruction(["JNC", "JB"], 9, [IMM]),
     Instruction("JO", 10, [IMM]),
@@ -237,8 +232,8 @@ INSTRUCTIONS: list[Instruction] = [
     Instruction("CALL", 48, [IMM]),
     Instruction("JS", 64, [R]),
     Instruction("JNS", 80, [R]),
-    Instruction("JE", 96, [R]),
-    Instruction("JNE", 112, [R]),
+    Instruction(["JE", "JZ"], 96, [R]),
+    Instruction(["JNE", "JNZ"], 112, [R]),
     Instruction(["JC", "JAE"], 128, [R]),
     Instruction(["JNC", "JB"], 144, [R]),
     Instruction("JO", 160, [R]),

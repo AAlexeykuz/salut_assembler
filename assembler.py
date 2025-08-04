@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 from typing import Optional, cast
 
+from memory_block_data_path import MEMORY_BLOCK_DATA_PATH
 from salut.errors import (
     AssemblerError,
     AssemblerNameError,
@@ -18,7 +19,6 @@ from salut.utils import (
     FLAG_NUMBER_NAMES,
     IMM,
     INSTRUCTIONS,
-    MEMORY_BLOCK_DATA_PATH,
     NAME,
     PATH,
     PORT_NAMES,

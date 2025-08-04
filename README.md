@@ -121,9 +121,13 @@ You can also put a comment after an empty line.
 ### Terms
 
 General purpose registers: R0-R15 (Reg)
+
 Special registers: PC, SP, IM. IA, PS (S.Reg)
+
 Ports: P0-P3 (Port)
-Flags: N, Z, C, V or F0, F1, F2, F3 (Flag)
+
+Flags: N, Z, C, V (or F0, F1, F2, F3) (Flag)
+
 Immediate value: Imm
 
 Immediate value is a value that is written directly into the memory.
@@ -147,7 +151,7 @@ Stops processor.
 
 Actions: PC = PC + 1
 
-For all instructions below PC = PC + 1 (or + 2) and next instruction signal actions won't be mentioned.
+For all instructions below actions `PC = PC + 1 (or + 2)` and `next instruction signal` won't be mentioned.
 
 ### RET
 
@@ -169,23 +173,23 @@ Actions: SP = SP - 1, Memory[SP] = PC, PC = Address
 
 ### Jump instructions: Mnemonic Address
 
-| Mnemonic |            Instruction            |    Condition     |
-| :------: | :-------------------------------: | :--------------: |
-|    JS    |         Jump if negative          |        N         |
-|   JNS    |     Jump if positive or zero      |      not N       |
-|    JE    |      Jump if equal (if zero)      |        Z         |
-|   JNE    |   Jump if not equal (not zero)    |      not Z       |
-| JC (JAE) | Jump if carry (if above or equal) |        C         |
-| JNC (JB) |   Jump if not carry (if below)    |      not C       |
-|    JO    |         Jump if overflow          |        V         |
-|   JNO    |       Jump if not overflow        |      not V       |
-|    JL    |           Jump if less            |        SL        |
-|   JGE    |     Jump if greater or equal      |      not SL      |
-|    JA    |           Jump if above           |   C and not Z    |
-|   JBE    |      Jump if below or equal       |    not C or Z    |
-|    JG    |          Jump if greater          | not SL and not Z |
-|   JLE    |       Jump if less or equal       |     SL or Z      |
-|   JMP    |               Jump                |       True       |
+| Mnemonic  |            Instruction            |    Condition     |
+| :-------: | :-------------------------------: | :--------------: |
+|    JS     |         Jump if negative          |        N         |
+|    JNS    |     Jump if positive or zero      |      not N       |
+|  JE (JZ)  |      Jump if equal (if zero)      |        Z         |
+| JNE (JNZ) |   Jump if not equal (not zero)    |      not Z       |
+| JC (JAE)  | Jump if carry (if above or equal) |        C         |
+| JNC (JB)  |   Jump if not carry (if below)    |      not C       |
+|    JO     |         Jump if overflow          |        V         |
+|    JNO    |       Jump if not overflow        |      not V       |
+|    JL     |           Jump if less            |        SL        |
+|    JGE    |     Jump if greater or equal      |      not SL      |
+|    JA     |           Jump if above           |   C and not Z    |
+|    JBE    |      Jump if below or equal       |    not C or Z    |
+|    JG     |          Jump if greater          | not SL and not Z |
+|    JLE    |       Jump if less or equal       |     SL or Z      |
+|    JMP    |               Jump                |       True       |
 
 Above means unsigned greater, below means unsigned less.
 
@@ -215,11 +219,17 @@ MOV Flag, Value sets the least significant bit of the number to the flag in PS.
 
 MOV IM or PS sets the 4 least significant bits of the number to the special register.
 
-If you move a value into a flag or PS SL will be recalculated as N xor V.
+If you move a value into a flag or PS SL flag will be recalculated as N xor V.
 
 MOV PC, Reg|Imm does the same thing as JMP Reg|Imm.
 
 Actions: Destination = Value
+
+### SWAP Reg 1, Reg 2
+
+Swaps two registers.
+
+Actions: Reg 1, Reg 2 = Reg 2, Reg 1
 
 ### DROP
 
@@ -237,7 +247,7 @@ Possible uses:
 PUSH S.Reg|Reg|Imm
 ```
 
-When PS is pushed it includes fifth bit as SL flag.
+When PS is pushed it includes SL flag as a fifth bit.
 
 Actions: SP = SP - 1, Memory[SP] = Value
 
@@ -251,6 +261,8 @@ Possible uses:
 POP PC|IM|IA|PS|Reg
 ```
 
+When PS is popped into it includes SL flag as a fifth bit.
+
 POP PC does the same thing as RET.
 
 Actions: Destination = Memory[SP], SP = SP + 1
@@ -262,8 +274,10 @@ Sets destination to the last value from the stack without changing it.
 Possible uses:
 
 ```
-POP PC|IM|IA|PS|Reg
+PEEK PC|IM|IA|PS|Reg
 ```
+
+When PS is peeked into it includes SL flag as a fifth bit.
 
 Actions: Destination = Memory[SP]
 
@@ -543,3 +557,102 @@ DIV Reg, Reg, Imm
 `DIV Reg, Imm, Reg` isn't implemented.
 
 Actions: Quotient Destination = Value 1 / Value 2, Remainder destination (if specificed) = Value 1 % Value 2
+
+## Flags
+
+N - Negative flag. Most of the time it shows if the result of an instruction was negative in two's complement (most significant bit is on)
+Z - Zero flag. It shows if the result of an instruction was zero.
+C - Carry flag. Most of the time it shows if adding two numbers produced a carry or subtracting two numbers produced a borrow.
+V - Overflow flag. Most of the time it shows that the result after adding/subtracting two positive numbers is negative or the other way around.
+
+### MOV
+
+Whenever you move a value into a flag or PS, SL flag is recalculated (SL = N xor V). All other flags are unchanged.
+
+### POP, PEEK
+
+If you pop or peek into PS it won't recalculate SL flag and set it as fifth bit instead.
+
+### MSB
+
+Sets N flag as the most significant bit of a specificed register.
+
+### LSB
+
+Sets N flag as the least significant bit of a specified register.
+
+### RND
+
+Sets N as the most significant bit of a pseudorandom number.
+
+### SL
+
+Sets SL as N xor V.
+
+### INC, DEC
+
+Sets N as the most significant bit of the result.
+
+Sets Z if the result is zero.
+
+Sets V if input is positive and result is negative or the other way around.
+
+### NEG
+
+Sets N as the most significant bit of the result.
+
+Sets Z if the result is zero.
+
+Sets V if negating a negative number still gave a negative (happens with -32678)
+
+## ABS
+
+Sets N as the most significant bit of the result. (ABS can return negatie value if input is -32678)
+
+Sets Z if the result is zero.
+
+Sets V = N.
+
+### Logic instructions:
+
+Sets N as the most significant bit of the result. (-32678)
+
+Sets Z if the result is zero.
+
+### Shift and roll instructions:
+
+Sets N as the most significant bit of the result. (-32678)
+
+Sets Z if the result is zero.
+
+Sets C if the part that was shifted/rolled out of the register contained at least one turned on bit.
+
+### ADD, ADC, SUB, SBC and CMP
+
+CMP is the same as SUB except it doesn't save the result.
+
+Sets N if the result is negative.
+
+Sets Z if the result is zero
+
+Sets C as carry (no borrow) out bit.
+
+Sets V if adding (subtracting) two positive numbers gave a negative or the other way around.
+
+### MUL
+
+Sets N if the result is negative.
+
+Sets Z if the result is zero
+
+Sets C if the result is bigger than 65535
+
+### DIV, REM
+
+Sets N if the result is negative.
+
+Sets Z if the result is zero
+
+Sets C if the remainder isn't zero.
+
+Sets V if division by zero.
