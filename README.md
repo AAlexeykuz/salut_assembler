@@ -561,9 +561,14 @@ Actions: Quotient Destination = Value 1 / Value 2, Remainder destination (if spe
 ## Flags
 
 N - Negative flag. Most of the time it shows if the result of an instruction was negative in two's complement (most significant bit is on)
+
 Z - Zero flag. It shows if the result of an instruction was zero.
+
 C - Carry flag. Most of the time it shows if adding two numbers produced a carry or subtracting two numbers produced a borrow.
+
 V - Overflow flag. Most of the time it shows that the result after adding/subtracting two positive numbers is negative or the other way around.
+
+By "sets flag" below I mean that if condition is true it sets it as 1, else 0.
 
 ### MOV
 
