@@ -717,12 +717,11 @@ Special instructions are marked with a dot in the start. They don't actually hav
 
 ### .DATA Value
 
-.DATA just puts the value in this place in the ram.
+.DATA just puts the given value in the RAM where the instruction is written.
 
 Possible uses:
 
 ```
-
 .DATA Imm
 
 ```
