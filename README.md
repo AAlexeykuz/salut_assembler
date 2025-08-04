@@ -110,17 +110,66 @@ python assembler.py path\to\program.txt
 Instructions follow this syntax:
 
 ```
-    (Mnemonic) (Operands separated by commas) ; (Comment after ';')
+(Mnemonic) (Operands separated by commas) ; (Comment after ';')
 ```
 
 You can also put a comment after an empty line.
 
-### 0x00 NOP
+### Terms
+
+General purpose registers: R0-R15 (Reg)
+Special registers: PC, SP, IM. IA, PS
+Ports: P0-P3 (Port)
+Flags: N, Z, C, V or F0, F1, F2, F3 (Flag)
+Immediate value: Imm
+
+Immediate value means a value that is written directly into the memory.
+It can be:
+
+1. Decimal number from -65535 to 65535
+2. Binary number that starts with "0b" from 0b0 to 0b1111_1111_1111_1111
+3. Hexadecimal number that starts with "0x" form 0x0 to 0xFFFF
+4. a letter in single quotes - it's transformed into integer with python ord() function.
+5. A defined name of a label or a constant.
+
+### 0x0000 NOP
 
 No operation instruction.
 
 Actions: PC = PC + 1, Next command signal
 
-### 0x01 STOP
+### 0x0001 STOP
 
 Stops processor.
+
+Actions: PC = PC + 1
+
+### 0x0002 RET
+
+Returns from a function - pops stack into the PC.
+
+Actions: PC = Memory[SP], SP = SP + 1, Next command signal
+
+### 0x0003 CALL Reg|Imm
+
+Calls a function - pushes PC into stack and
+
+### 0x0004-0x0012 Jumps
+
+| Opcode | Mnemonic |            Instruction            | Condition |
+| :----: | :------: | :-------------------------------: | :-------: |
+| 0x0004 |    JS    |         Jump if negative          |     N     |
+| 0x0005 |   JNS    |     Jump if positive or zero      |   not N   |
+| 0x0006 |    JE    |      Jump if equal (if zero)      |     Z     |
+| 0x0007 |   JNE    |   Jump if not equal (not zero)    |   not Z   |
+| 0x0008 | JC (JAE) | Jump if carry (if above or equal) |     C     |
+| 0x0009 | JNC (JB) |   Jump if not carry (if below)    |   not C   |
+| 0x000A |          |                                   |           |
+| 0x000B |          |                                   |           |
+| 0x000C |          |                                   |           |
+| 0x000D |          |                                   |           |
+| 0x000E |          |                                   |           |
+| 0x000F |          |                                   |           |
+| 0x0010 |          |                                   |           |
+| 0x0011 |          |                                   |           |
+| 0x0012 |          |                                   |           |
