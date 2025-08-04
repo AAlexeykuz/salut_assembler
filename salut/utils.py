@@ -326,7 +326,7 @@ INSTRUCTIONS: list[Instruction] = [
     Instruction("XNOR", 53248, [R, R, R]),
     Instruction("MUL", 57344, [R, R, R]),
     Instruction("DIV", 61440, [R, R, R]),
-    Instruction("DATA", operands=[IMM]),
+    Instruction(".DATA", operands=[IMM]),
     Instruction(".EQU", operands=[NAME, IMM]),
     Instruction(".INCLUDE", operands=[PATH]),
 ]

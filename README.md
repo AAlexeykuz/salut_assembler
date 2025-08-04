@@ -15,7 +15,7 @@ Instruction decoder reads memory from PC register and turns on needed inputs in 
 
 ## MM Architecture
 
-MM just outputs every single register or memory slots that could be read and has input for every register that could be written in.
+MM just outputs every single register or memory slot that could be read and has input for every register that could be written in.
 
 It has these modules:
 
@@ -51,7 +51,7 @@ Stack is stored at the end of the RAM and can be as big as programmer allows.
 
 4.  IA - Input address. It tells where input handling function is in the memory.
 
-When input signal bits turn on, if the port in which they're turned on is set in IM it clears signal bits from every port and executes CALL IA instruction, interrupting others.
+If the in-port with the signal bit on is marked in IM it triggers input handling. It clears signal bits from every port and executes CALL IA instruction, interrupting others.
 
 ### 5. Flags
 
@@ -90,15 +90,37 @@ All of the modules are 16 bit. They get input from MM and output on decoder sign
 ## Instruction decoder
 
 Instruction decoder reads memory by PC address. When 1-tick signal for the next command comes it launches certain instruction that outputs all of the needed signals in ALU and MM.
+
 There isn't a clock in this CPU - every instruction takes as much ticks as it needs (minimum is 4) and gives a signal for the next command on time. So frequency ranges from 0.38 to 10 Hz.
+
 Green button on the joystick starts first instruction, dark red resets all of the registers and turns CPU off.
 
 # Assembler documentation
 
 To use the assembler, write your program in program.txt and launch assembler.py. It automatically sets memory block data to your machine code if assembled correctly. To import it in the game you must press E on the red memory block (RAM) on the corner of the CPU. After that you may press green button on the joystick and the code will execute.
 
-You can also assemble prorgam in any other file (not necessarily .txt) with this command:
+You can also assemble prorgam in any other file (not necessarily .txt) with:
 
 ```
 python assembler.py path\to\program.txt
 ```
+
+## Instruction set
+
+Instructions follow this syntax:
+
+```
+    (Mnemonic) (Operands separated by commas) ; (Comment after ';')
+```
+
+You can also put a comment after an empty line.
+
+### 0x00 NOP
+
+No operation instruction.
+
+Actions: PC = PC + 1, Next command signal
+
+### 0x01 STOP
+
+Stops processor.
