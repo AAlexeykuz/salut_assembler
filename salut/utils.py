@@ -210,6 +210,7 @@ INSTRUCTIONS: list[Instruction] = [
     Instruction("JG", 16, [IMM]),
     Instruction("JLE", 17, [IMM]),
     Instruction("JMP", 18, [IMM]),
+    Instruction("MOV", 18, [PC, IMM]),
     Instruction("MOV", 19, [IM, IMM]),
     Instruction("MOV", 20, [IA, IMM]),
     Instruction("MOV", 21, [PS, IMM]),

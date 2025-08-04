@@ -45,7 +45,7 @@ By default P0 OUT is connected to 32x32 screen, P0 IN is connected to the joysti
 
 2.  SP - Stack pointer. It shows address of the last value put in stack (0 if it's empty yet).
 
-Stack is stored at the end of the RAM and can be as big as programmer allows.
+Stack is stored at the end of the RAM and can be as big as programmer allows. Stack pointer can only be incremented or decremented, it can't take values from any other source.
 
 3.  IM - Input mask. It contains 4 bits that control from which ports input handling can be triggered.
 
@@ -82,16 +82,17 @@ ALU contains these modules:
 5. Pseudorandom number generator (16-bit Fibonacci LFSR)
 6. Adder (and subtractor)
 7. Logical module (AND, OR, XOR, NAND, NOR, XNOR, NOT)
-8. Multiplication module
-9. Division module
+8. Shift and roll module
+9. Unsigned multiplication module
+10. Unsigned division module
 
 All of the modules are 16 bit. They get input from MM and output on decoder signal.
 
 ## Instruction decoder
 
-Instruction decoder reads memory by PC address. When 1-tick signal for the next command comes it launches certain instruction that outputs all of the needed signals in ALU and MM.
+Instruction decoder reads memory at the PC address. When 1-tick signal for the next command comes it launches certain instruction that outputs all of the needed signals in ALU and MM.
 
-There isn't a clock in this CPU - every instruction takes as much ticks as it needs (minimum is 4) and gives a signal for the next command on time. So frequency ranges from 0.38 to 10 Hz.
+There isn't a clock in this CPU - every instruction takes as much ticks as it needs (minimum is 4) and gives a signal for the next instruction on time. So frequency ranges from 0.38 to 10 Hz.
 
 Green button on the joystick starts first instruction, dark red resets all of the registers and turns CPU off.
 
@@ -104,6 +105,8 @@ You can also assemble prorgam in any other file (not necessarily .txt) with:
 ```
 python assembler.py path\to\program.txt
 ```
+
+The assembler isn't sensitive to the register.
 
 ## Instruction set
 
@@ -118,58 +121,425 @@ You can also put a comment after an empty line.
 ### Terms
 
 General purpose registers: R0-R15 (Reg)
-Special registers: PC, SP, IM. IA, PS
+Special registers: PC, SP, IM. IA, PS (S.Reg)
 Ports: P0-P3 (Port)
 Flags: N, Z, C, V or F0, F1, F2, F3 (Flag)
 Immediate value: Imm
 
-Immediate value means a value that is written directly into the memory.
+Immediate value is a value that is written directly into the memory.
 It can be:
 
 1. Decimal number from -65535 to 65535
 2. Binary number that starts with "0b" from 0b0 to 0b1111_1111_1111_1111
 3. Hexadecimal number that starts with "0x" form 0x0 to 0xFFFF
-4. a letter in single quotes - it's transformed into integer with python ord() function.
-5. A defined name of a label or a constant.
+4. A character in single quotes - it's transformed into integer with python ord() function.
+5. A name of a label or a constant.
 
-### 0x0000 NOP
+### NOP
 
 No operation instruction.
 
-Actions: PC = PC + 1, Next command signal
+Actions: PC = PC + 1, next instruction signal
 
-### 0x0001 STOP
+### STOP
 
 Stops processor.
 
 Actions: PC = PC + 1
 
-### 0x0002 RET
+For all instructions below PC = PC + 1 (or + 2) and next instruction signal actions won't be mentioned.
+
+### RET
 
 Returns from a function - pops stack into the PC.
 
-Actions: PC = Memory[SP], SP = SP + 1, Next command signal
+Actions: PC = Memory[SP], SP = SP + 1
 
-### 0x0003 CALL Reg|Imm
+### CALL Address
 
-Calls a function - pushes PC into stack and
+Calls a function by given address.
 
-### 0x0004-0x0012 Jumps
+Possible uses:
 
-| Opcode | Mnemonic |            Instruction            | Condition |
-| :----: | :------: | :-------------------------------: | :-------: |
-| 0x0004 |    JS    |         Jump if negative          |     N     |
-| 0x0005 |   JNS    |     Jump if positive or zero      |   not N   |
-| 0x0006 |    JE    |      Jump if equal (if zero)      |     Z     |
-| 0x0007 |   JNE    |   Jump if not equal (not zero)    |   not Z   |
-| 0x0008 | JC (JAE) | Jump if carry (if above or equal) |     C     |
-| 0x0009 | JNC (JB) |   Jump if not carry (if below)    |   not C   |
-| 0x000A |          |                                   |           |
-| 0x000B |          |                                   |           |
-| 0x000C |          |                                   |           |
-| 0x000D |          |                                   |           |
-| 0x000E |          |                                   |           |
-| 0x000F |          |                                   |           |
-| 0x0010 |          |                                   |           |
-| 0x0011 |          |                                   |           |
-| 0x0012 |          |                                   |           |
+```
+CALL IA|Reg|Imm
+```
+
+Actions: SP = SP - 1, Memory[SP] = PC, PC = Address
+
+### Jump instructions: Mnemonic Address
+
+| Mnemonic |            Instruction            |    Condition     |
+| :------: | :-------------------------------: | :--------------: |
+|    JS    |         Jump if negative          |        N         |
+|   JNS    |     Jump if positive or zero      |      not N       |
+|    JE    |      Jump if equal (if zero)      |        Z         |
+|   JNE    |   Jump if not equal (not zero)    |      not Z       |
+| JC (JAE) | Jump if carry (if above or equal) |        C         |
+| JNC (JB) |   Jump if not carry (if below)    |      not C       |
+|    JO    |         Jump if overflow          |        V         |
+|   JNO    |       Jump if not overflow        |      not V       |
+|    JL    |           Jump if less            |        SL        |
+|   JGE    |     Jump if greater or equal      |      not SL      |
+|    JA    |           Jump if above           |   C and not Z    |
+|   JBE    |      Jump if below or equal       |    not C or Z    |
+|    JG    |          Jump if greater          | not SL and not Z |
+|   JLE    |       Jump if less or equal       |     SL or Z      |
+|   JMP    |               Jump                |       True       |
+
+Above means unsigned greater, below means unsigned less.
+
+JAE and JB can be used instead of JC and JNC
+
+Possible uses:
+
+```
+JMP Reg|Imm
+```
+
+Actions: PC = Reg|Imm
+
+### MOV Destination, Value
+
+MOV moves a value from one register to another or puts a value into a register from memory.
+
+Possible uses:
+
+```
+MOV PC|IM|IA|PS, Reg|Imm
+MOV Flag, Reg|Imm
+MOV Reg, S.Reg|Reg|Imm|Flag
+```
+
+MOV Flag, Value sets the least significant bit of the number to the flag in PS.
+
+MOV IM or PS sets the 4 least significant bits of the number to the special register.
+
+If you move a value into a flag or PS SL will be recalculated as N xor V.
+
+MOV PC, Reg|Imm does the same thing as JMP Reg|Imm.
+
+Actions: Destination = Value
+
+### DROP
+
+Drops a value from the stack - increments SP. In reality the value still stays in the end of the memory but will be rewritten after pushing a new value to the same address.
+
+Actions: SP = SP + 1
+
+### PUSH Value
+
+Pushes a value into the stack.
+
+Possible uses:
+
+```
+PUSH S.Reg|Reg|Imm
+```
+
+When PS is pushed it includes fifth bit as SL flag.
+
+Actions: SP = SP - 1, Memory[SP] = Value
+
+### POP Destination
+
+Pops the last value from the stack into the given destination.
+
+Possible uses:
+
+```
+POP PC|IM|IA|PS|Reg
+```
+
+POP PC does the same thing as RET.
+
+Actions: Destination = Memory[SP], SP = SP + 1
+
+### PEEK Destination
+
+Sets destination to the last value from the stack without changing it.
+
+Possible uses:
+
+```
+POP PC|IM|IA|PS|Reg
+```
+
+Actions: Destination = Memory[SP]
+
+### IN Destination, Value
+
+Sets destination to the value from specified in-port.
+
+Possible uses:
+
+```
+IN Reg, Port
+```
+
+Actions: Destination = Value
+
+### OUT Destination, Value
+
+Outputs value to the specificed out-port.
+
+Possible uses:
+
+```
+OUT Port, Reg|Imm
+```
+
+Actions: Outputs 1 tick signal
+
+### STR [Address], Value
+
+Stores a value into the RAM at specified address. Address is put in square brackets.
+
+Possible uses:
+
+```
+STR [Reg], Reg
+STR [Reg+Reg], Reg
+STR [Reg], Imm
+STR [Imm], Reg
+```
+
+Actions: Memory[Address] = Value
+
+### LDR Destination, [Address]
+
+Loads a value from RAM at specifide address into the register.
+
+Possible uses:
+
+```
+LDR Reg, [Reg]
+LDR Reg, [Reg+Reg]
+LDR Reg, [Imm]
+```
+
+Actions: Destination = Memory[Address]
+
+### RND Destination
+
+Moves a pseudorandom number into a register.
+
+Possible uses:
+
+```
+RND Reg
+RND     (Only sets flags)
+```
+
+Actions: Destination = Pseudorandom number
+
+### MSB Value
+
+Sets N to the most significant bit of a register.
+
+Possible uses:
+
+```
+MSB Reg
+```
+
+Actions: N = MSB of Value
+
+### LSB Value
+
+Sets N to the least significant bit of a register.
+
+Possible uses:
+
+```
+LSB Reg
+```
+
+Actions: N = LSB of Value
+
+### SL
+
+Calcualtes SL flag manually.
+
+Possible uses:
+
+```
+SL
+```
+
+Actions: SL = N xor V
+
+### Logic instructions: Mnemonic Destination, Value 1, Value 2
+
+Logic operations are: AND, OR, XOR, NAND, NOR, XNOR
+
+Possible uses:
+
+```
+Mnemonic Reg, Reg, Reg|Imm
+Mnemonic Reg, Reg|Imm, Reg
+```
+
+First register is destination, other two are the operands for the logic operation.
+
+Actions: Destination = Operation(Value 1, Value 2)
+
+### NOT Destination, Value
+
+Inverts all bits of the value.
+
+Possible uses:
+
+```
+NOT Reg, Reg
+```
+
+Actions: Destination = NOT Value
+
+### INC Destination, Value
+
+Increments value.
+
+Possible uses:
+
+```
+INC Reg, Reg
+```
+
+Actions: Destination = Value + 1
+
+### DEC Destination, Value
+
+Decrements value.
+
+Possible uses:
+
+```
+DEC Reg, Reg
+```
+
+Actions: Destination = Value - 1
+
+### NEG Destination, Value
+
+Negates a value (two's complement).
+
+Possible uses:
+
+```
+NEG Reg, Reg
+```
+
+Actions: Destination = -Value
+
+### ABS Destination, Value
+
+Negates a value (two's complement) if value is negative, else leaves value unchanged.
+
+Possible uses:
+
+```
+ABS Reg, Reg
+```
+
+Actions: Destination = |Value|
+
+### CMP Value 1, Value 2
+
+Compares two values and set flags according to subtraction.
+
+Possible uses:
+
+```
+CMP Reg, Reg
+CMP Reg, Imm
+CMP Imm, Reg
+```
+
+Actions: Subtract Value 2 from Value 2
+
+### ADD Destination, Value 1, Value 2
+
+Adds two values.
+
+Possible uses:
+
+```
+ADD Reg, Reg, Reg
+ADD Reg, Reg, Imm
+ADD Reg, Imm, Reg
+```
+
+Actions: Destination = Value 1 + Value 2
+
+### ADC Destination, Value 1, Value 2
+
+Adds two values and a carry flag.
+
+Possible uses:
+
+```
+ADC Reg, Reg, Reg
+ADC Reg, Reg, Imm
+ADC Reg, Imm, Reg
+```
+
+Actions: Destination = Value 1 + Value 2 + C
+
+### SUB Destination, Value 1, Value 2
+
+Subtracts Value 2 from Value 1.
+
+Possible uses:
+
+```
+SUB Reg, Reg, Reg
+SUB Reg, Reg, Imm
+SUB Reg, Imm, Reg
+```
+
+Actions: Destination = Value 1 - Value 2
+
+### SBC Destination, Value 1, Value 2
+
+Subtracts Value 2 and a carry flag from Value 1.
+
+Possible uses:
+
+```
+SUB Reg, Reg, Reg
+SUB Reg, Reg, Imm
+SUB Reg, Imm, Reg
+```
+
+Actions: Destination = Value 1 - Value 2 - C
+
+### MUL Destination, Value 1, Value 2
+
+Multiplies two unsigned values.
+
+Possible uses:
+
+```
+MUL Reg, Reg, Reg
+MUL Reg, Reg, Imm
+MUL Reg, Imm, Reg
+```
+
+Actions: Destination = Value 1 \* Value 2
+
+### DIV Quotient Destination, Remainder Destination, Value 1, Value 2
+
+Divides two unsigned values.
+
+Possible uses:
+
+```
+DIV Reg, Reg, Reg, Reg
+DIV Reg, Reg, Reg  (Remainder isn't saved)
+DIV Reg, Reg, Imm
+```
+
+`DIV Reg, Imm, Reg` isn't implemented.
+
+Actions: Quotient Destination = Value 1 / Value 2, Remainder destination (if specificed) = Value 1 % Value 2
