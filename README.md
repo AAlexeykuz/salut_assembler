@@ -106,7 +106,11 @@ You can also assemble prorgam in any other file (not necessarily .txt) with:
 python assembler.py path\to\program.txt
 ```
 
-The assembler isn't sensitive to the register.
+The assembler isn't sensitive to the register, tabulation and comments are ignored, spaces between operands are ignored. Underscores in immediate values that start with a digit are also ignored.
+
+Link to the table that was used when making SALUT-2: https://docs.google.com/spreadsheets/d/1K6liOvKjDyqksuPSXaJNU8sKMBSrsMw3m8DJNx-0K9s/edit?gid=0#gid=0
+
+It contains instruction set, what flags do they set etc.
 
 ## Instruction set
 
@@ -610,7 +614,7 @@ Sets Z if the result is zero.
 
 Sets V if negating a negative number still gave a negative (happens with -32678)
 
-## ABS
+### ABS
 
 Sets N as the most significant bit of the result. (ABS can return negatie value if input is -32678)
 
@@ -661,3 +665,93 @@ Sets Z if the result is zero
 Sets C if the remainder isn't zero.
 
 Sets V if division by zero.
+
+## Labels
+
+If you want your program to jump to some specific place, instead of calculating the number of the needed memory slot in machine code by yourself you can just put a label.
+
+For example:
+
+```
+; cycle that goes from 10 to 0
+MOV r0, 10
+label_1:
+    DEC r0, r0
+    JNZ label_1
+STOP
+```
+
+Labels are defined by putting ':' in the end of the line.
+
+Labels are just constants that contain addresses. You can use it just like any other immediate value.
+
+Names of labels can't start with digit. Global labels can't point to the same address ~~because I don't know how my own code works~~ because of they way assembler works.
+
+### Local Labels
+
+If name of a label starts with a dot it becomes a local label. Local labels must follow a global label.
+
+Local labels with the same name can follow two different global labels.
+
+for exammple:
+
+```
+global1:
+    MOV r0, 10
+    .local:
+        DEC r0, r0
+        JNZ .local
+
+global2:
+    MOV r0, 5
+    .local:
+        DEC r0, r0
+        JNZ .local
+```
+
+First JNZ will go to .local label that follows global1 and second JNZ will go to .local label that follows global2.
+
+## Special Instructions
+
+Special instructions are marked with a dot in the start. They don't actually have an opcode and are used by assembler only.
+
+### .DATA Value
+
+.DATA just puts the value in this place in the ram.
+
+Possible uses:
+
+```
+
+.DATA Imm
+
+```
+
+### .EQU Name, Value
+
+.EQU defines a constant. After definig a constant you can use the value everywhere.
+
+Possible uses:
+
+```
+.EQU Name, IMM
+
+```
+
+Constant name can't start with a digit.
+
+### .INCLUDE Path
+
+.INCLUDE instruction copy and pastes code from another file where you put it.
+
+Recursive includes lead to an error. All of the labels and constants from included files are included as well.
+
+Possible uses:
+
+```
+.INCLUDE Path
+```
+
+# Thank you for reading
+
+I hope this was useful. I'll probably rewrite the documentation later.
