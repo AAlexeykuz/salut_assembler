@@ -1,0 +1,44 @@
+.EQU pixel_on, 0b011_00100_00000
+.EQU pixel_off, 0b010_00100_00000
+.EQU frame_number, 939
+.EQU update_screen, 0b100_00000_00000
+
+; R0 - on pointer
+; R1 - off pointer
+; R2 - video data pointer
+; R3 - video data storage
+; R4 - 16-bit counter
+; R5 - half line counter (48)
+; R6 - frame counter
+MOV R2, video_data
+MOV R6, frame_number
+video_cycle:
+    MOV R5, 48
+    MOV R0, pixel_on
+    MOV R1, pixel_off
+    .frame_cycle:
+        LDR R3, [R2]
+        MOV R4, 16
+        .half_line_cycle:
+            SHR R3, R3, 1
+            JNC .half_line_bit_off
+            .half_line_bit_on:
+                OUT p0, R0
+                JMP .half_life_next_bit
+            .half_line_bit_off:
+                OUT p0, R1
+                JMP .half_life_next_bit
+            .half_life_next_bit:
+            INC R0, R0
+            INC R1, R1
+            DEC R4, R4
+            JNZ .half_line_cycle
+        INC R2, R2
+        DEC R5, R5
+        JNZ .frame_cycle
+    OUT p0, update_screen
+    DEC R6, R6
+    JNZ video_cycle
+    STOP
+video_data:
+    .include bad_apple_data.txt

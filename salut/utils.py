@@ -127,7 +127,9 @@ class Instruction:
         3) Ставит порты, флаги и значения в квадратных скобках первее регистров.
         Убирает квадратные скобки.
         4) Ставит немедленное значение в конце.
+        5) Если это DIV с 4 операндами или REM, переворачивает операнды.
         """
+
         operands = [
             f"F{FLAG_NAMES.index(operand)}" if operand in FLAG_NAMES else operand
             for operand in operands
@@ -144,17 +146,21 @@ class Instruction:
         squared_operands = [
             operand.strip("[]") for operand in operands if self._is_squared(operand)
         ]
-        operands = squared_operands + [
-            operand for operand in operands if operand not in squared_operands
-        ]
+        operands = [
+            operand for operand in operands if not self._is_squared(operand)
+        ] + squared_operands
+
         flag_and_port_oprands = [
             operand for operand in operands if operand in (FLAG_NUMBER_NAMES + PORT_NAMES)
         ]
-        operands = flag_and_port_oprands + [
+        operands = [
             operand for operand in operands if operand not in flag_and_port_oprands
-        ]
+        ] + flag_and_port_oprands
 
         self._place_immediate_last(operands)
+
+        if len(operands) == 4 or "REM" in self.names:
+            operands = operands[::-1]
 
         return operands
 
@@ -178,7 +184,7 @@ class Instruction:
         for i in operands:
             sum_ <<= Instruction._get_bits(i)
             sum_ += int(i[1:])
-        # print(operands, format(sum_, "016b"))
+        print(operands, format(sum_, "016b"))
         return sum_
 
     def get_machine_code(self, operands: list[str]) -> list[int | str]:

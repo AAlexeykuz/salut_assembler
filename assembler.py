@@ -394,7 +394,8 @@ class Assembler:
         if assembler._was_error:
             return None
         if not included_files:
-            Assembler.print_machine_code(machine_code)
+            # Assembler.print_machine_code(machine_code)
+            print(machine_code[:100])
             print("Program assembled succesfully!")
             print(
                 f"{assembler._word_count * 2} bytes ({memory_use_percentage:.2f}%) of RAM used."
