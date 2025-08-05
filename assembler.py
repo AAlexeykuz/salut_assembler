@@ -49,6 +49,9 @@ class Assembler:
             included_files = []
         self._included_files = included_files
         self._was_error = False
+        self._word_to_line: dict[
+            int, int
+        ] = {}  # номер слова: номер строки (для принта ошибок)
 
     @staticmethod
     def _format_line(line: str) -> str:
@@ -142,7 +145,7 @@ class Assembler:
         self, instruction_name: str, operands: list[str]
     ) -> list[int | str] | list[int]:
         instruction = self._find_instruction(instruction_name, operands)
-        if "DATA" in instruction.names:
+        if ".DATA" in instruction.names:
             return [operands[0]]
         if ".EQU" in instruction.names:
             self._check_constant_name(operands[0])
@@ -161,7 +164,6 @@ class Assembler:
                     program_file.readlines(),
                     path=path,
                     address_shift=self._word_count,
-                    print_info=False,
                     included_files=self._included_files + [path],
                     previous_assembler=self,
                 )
@@ -281,11 +283,15 @@ class Assembler:
             return []
 
         output = self._parse_instruction(*self._parse_line(formatted_line))
+        for i in range(len(output)):
+            self._word_to_line[self._word_count + i] = self._line_count
         self._word_count += len(output)
         return output
 
-    def replace_names(self, machine_code: list[int | str]) -> None:
+    def replace_names(self, machine_code: list[int | str], path: Optional[str]) -> None:
+        self._line_count = 0
         for i, value in enumerate(machine_code):
+            self._line_count += 1
             if isinstance(value, int):
                 continue
             with contextlib.suppress(ValueError):
@@ -301,7 +307,9 @@ class Assembler:
             if current_global_label and value in self._local_labels[current_global_label]:
                 machine_code[i] = self._local_labels[current_global_label][value]
                 continue
-            raise UndefinedValueError(f"Undefined value: '{value}'.")
+            self._was_error = True
+            self._line_count = self._word_to_line[i]
+            self.print_error(UndefinedValueError(f"Undefined value: '{value}'"), path)
 
     def add_labels(
         self, global_labels: dict[str, int], local_labels: dict[str, dict[str, int]]
@@ -333,13 +341,27 @@ class Assembler:
             self._constants[k] = v
             self._included_names.append(k)
 
+    def print_error(self, error: Exception, path: Optional[str]) -> None:
+        print(
+            f"{error.__class__.__name__} on line {self._line_count}{f' in {path}' if path else ''}:\n{error}\n"
+        )
+
+    @staticmethod
+    def print_machine_code(machine_code: list[int]) -> None:
+        line_width = 8
+        for i in range(0, len(machine_code), line_width):
+            print(
+                format(i, "04x")
+                + "\t"
+                + "  ".join(format(j, "04X") for j in machine_code[i : i + line_width])
+            )
+
     @classmethod
     def assemble(
         cls,
         lines: list[str],
         path: Optional[str] = None,
         address_shift: int = 0,
-        print_info: bool = True,
         included_files: Optional[list[str]] = None,
         previous_assembler: Optional["Assembler"] = None,
     ) -> Optional[list[int] | list[int | str]]:
@@ -349,18 +371,10 @@ class Assembler:
             try:
                 machine_code.extend(assembler._assemble_line(line))
             except AssemblerError as error:
-                print(
-                    f"{error.__class__.__name__} on line {assembler._line_count}{f' in {path}' if path else ''}:\n{error}\n"
-                )
+                assembler.print_error(error, path)
                 assembler._was_error = True
         if not included_files:
-            try:
-                assembler.replace_names(machine_code)
-            except UndefinedValueError as error:
-                print(
-                    f"{error.__class__.__name__} on line {assembler._line_count}{f' in {path}' if path else ''}:\n{error}\n"
-                )
-                assembler._was_error = True
+            assembler.replace_names(machine_code, path)
         if previous_assembler:
             try:
                 previous_assembler.add_labels(
@@ -368,12 +382,10 @@ class Assembler:
                 )
                 previous_assembler.add_constants(assembler._constants)
             except NameError as error:
-                print(
-                    f"{error.__class__.__name__} on line {assembler._line_count}{f' in {path}' if path else ''}:\n{error}\n"
-                )
+                assembler.print_error(error, path)
                 assembler._was_error = True
         memory_use_percentage = len(machine_code) * 100 / 65536
-        if len(machine_code) > 65536 and print_info:
+        if len(machine_code) > 65536 and not included_files:
             print(
                 "MemoryOverflowError:\n"
                 f"Program is too large: used {memory_use_percentage:.2f}% of available RAM (128 KiB)."
@@ -381,8 +393,8 @@ class Assembler:
             assembler._was_error = True
         if assembler._was_error:
             return None
-        if print_info:
-            print(machine_code)
+        if not included_files:
+            Assembler.print_machine_code(machine_code)
             print("Program assembled succesfully!")
             print(
                 f"{assembler._word_count * 2} bytes ({memory_use_percentage:.2f}%) of RAM used."

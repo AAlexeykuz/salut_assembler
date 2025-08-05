@@ -48,7 +48,7 @@ input_handling:
 
     .left:
         LSB R15
-        JS .left_skip
+        JNS .left_skip
         CALL pixel_off
         .left_skip:
         DEC R1, R1

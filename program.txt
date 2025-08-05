@@ -25,8 +25,6 @@ waiting:
         JMP waiting
 
 
-
-
 input_handling:
     MOV IM, 0
     PUSH PS
@@ -85,5 +83,6 @@ input_handling:
     POP PS
     MOV IM, 1
     RET
+
 
 .include screen_lib.txt
